@@ -133,8 +133,7 @@ class HealthDataFetcher: DefaultInitializable, Module, EnvironmentAccessible {
     func fetchLastTwoWeeksSleep() async throws -> [Double] {
         var dailySleepData: [Double] = []
         
-        // We go through all possible days in the last two weeks.
-        for day in -14..<0 {
+        for day in -7..<0 { // Changed from -14 to -7
             // We start the calculation at 3 PM the previous day to 3 PM on the day in question.
             guard let startOfSleepDay = Calendar.current.date(byAdding: DateComponents(day: day - 1), to: Date.startOfDay()),
                   let startOfSleep = Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: startOfSleepDay),
@@ -172,43 +171,123 @@ class HealthDataFetcher: DefaultInitializable, Module, EnvironmentAccessible {
 
     /// Fetches the user's blood glucose data for the last two weeks.
     ///
-    /// - Returns: An array of `Double` values representing daily average blood glucose in mg/dL.
+    /// - Returns: An array of `Int` values representing daily average blood glucose in mg/dL.
     /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
-    func fetchLastTwoWeeksBloodGlucose() async throws -> [Double] {
-        try await fetchLastTwoWeeksQuantityData(
-            for: .bloodGlucose,
-            unit: HKUnit.init(from: "mg/dL"),
-            options: [.discreteAverage]
+    func fetchLastTwoWeeksBloodGlucose() async throws -> [[GlucoseReading]] {
+        guard let quantityType = HKObjectType.quantityType(forIdentifier: .bloodGlucose) else {
+            throw HealthDataFetcherError.invalidObjectType
+        }
+
+        let now = Date()
+        let startDate = Calendar.current.date(byAdding: DateComponents(day: -7), to: now) ?? Date() // Changed from -14 to -7
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
+        
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: quantityType, predicate: predicate)],
+            sortDescriptors: [SortDescriptor(\.startDate, order: .forward)]
         )
+        
+        let samples = try await descriptor.result(for: healthStore)
+        var dailyGlucoseValues = Array(repeating: [GlucoseReading](), count: 7) // Changed from 14 to 7
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        
+        for sample in samples {
+            if let sample = sample as? HKQuantitySample {
+                let daysAgo = Calendar.current.dateComponents([.day], from: sample.startDate, to: now).day ?? 0
+                if daysAgo < 7 { // Changed from 14 to 7
+                    let index = 6 - daysAgo // Changed from 13 to 6
+                    let valueInMgDl = Int(round(sample.quantity.doubleValue(for: HKUnit(from: "mg/dL"))))
+                    let timeString = timeFormatter.string(from: sample.startDate)
+                    let reading = GlucoseReading(value: valueInMgDl, time: timeString)
+                    dailyGlucoseValues[index].append(reading)
+                }
+            }
+        }
+        
+        return dailyGlucoseValues
     }
 
     /// Fetches the user's carbohydrates intake data for the last two weeks.
     ///
     /// - Returns: An array of `Double` values representing daily carbohydrates in grams.
     /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
-    func fetchLastTwoWeeksCarbohydrates() async throws -> [Double] {
-        try await fetchLastTwoWeeksQuantityData(
-            for: .dietaryCarbohydrates,
-            unit: .gram(),
-            options: [.cumulativeSum]
+    func fetchLastTwoWeeksCarbohydrates() async throws -> [[CarbReading]] {
+        guard let quantityType = HKObjectType.quantityType(forIdentifier: .dietaryCarbohydrates) else {
+            throw HealthDataFetcherError.invalidObjectType
+        }
+
+        let now = Date()
+        let startDate = Calendar.current.date(byAdding: DateComponents(day: -7), to: now) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
+        
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: quantityType, predicate: predicate)],
+            sortDescriptors: [SortDescriptor(\.startDate, order: .forward)]
         )
+        
+        let samples = try await descriptor.result(for: healthStore)
+        var dailyCarbValues = Array(repeating: [CarbReading](), count: 7)
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        
+        for sample in samples {
+            if let sample = sample as? HKQuantitySample {
+                let daysAgo = Calendar.current.dateComponents([.day], from: sample.startDate, to: now).day ?? 0
+                if daysAgo < 7 {
+                    let index = 6 - daysAgo
+                    let valueInGrams = Int(round(sample.quantity.doubleValue(for: .gram())))
+                    let timeString = timeFormatter.string(from: sample.startDate)
+                    let reading = CarbReading(value: valueInGrams, time: timeString)
+                    dailyCarbValues[index].append(reading)
+                }
+            }
+        }
+        
+        return dailyCarbValues
     }
 
-    /// Fetches the user's insulin delivery data for the last two weeks.
-    ///
-    /// - Returns: An array of `Double` values representing daily insulin units.
-    /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
-    func fetchLastTwoWeeksInsulin() async throws -> [Double] {
-        try await fetchLastTwoWeeksQuantityData(
-            for: .insulinDelivery,
-            unit: .internationalUnit(),
-            options: [.cumulativeSum]
+    func fetchLastTwoWeeksInsulin() async throws -> [[InsulinReading]] {
+        guard let quantityType = HKObjectType.quantityType(forIdentifier: .insulinDelivery) else {
+            throw HealthDataFetcherError.invalidObjectType
+        }
+
+        let now = Date()
+        let startDate = Calendar.current.date(byAdding: DateComponents(day: -7), to: now) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
+        
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: quantityType, predicate: predicate)],
+            sortDescriptors: [SortDescriptor(\.startDate, order: .forward)]
         )
+        
+        let samples = try await descriptor.result(for: healthStore)
+        var dailyInsulinValues = Array(repeating: [InsulinReading](), count: 7)
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        
+        for sample in samples {
+            if let sample = sample as? HKQuantitySample {
+                let daysAgo = Calendar.current.dateComponents([.day], from: sample.startDate, to: now).day ?? 0
+                if daysAgo < 7 {
+                    let index = 6 - daysAgo
+                    let valueInUnits = sample.quantity.doubleValue(for: .internationalUnit())
+                    let timeString = timeFormatter.string(from: sample.startDate)
+                    let reading = InsulinReading(value: valueInUnits, time: timeString)
+                    dailyInsulinValues[index].append(reading)
+                }
+            }
+        }
+        
+        return dailyInsulinValues
     }
 
     private func createLastTwoWeeksPredicate() -> NSPredicate {
         let now = Date()
-        let startDate = Calendar.current.date(byAdding: DateComponents(day: -14), to: now) ?? Date()
+        let startDate = Calendar.current.date(byAdding: DateComponents(day: -7), to: now) ?? Date() // Changed from -14 to -7
         return HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
     }
 }

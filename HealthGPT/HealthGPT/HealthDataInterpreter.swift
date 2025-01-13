@@ -85,12 +85,12 @@ class HealthDataInterpreter: DefaultInitializable, Module, EnvironmentAccessible
             let bodyWeight = try await healthDataFetcher.fetchLastTwoWeeksBodyWeight()
             let heartRate = try await healthDataFetcher.fetchLastTwoWeeksHeartRate()
             let bloodGlucose = try await healthDataFetcher.fetchLastTwoWeeksBloodGlucose()
-            let carbohydrates = try await healthDataFetcher.fetchLastTwoWeeksCarbohydrates()
-            let insulin = try await healthDataFetcher.fetchLastTwoWeeksInsulin()
+            let carbohydrates = try await healthDataFetcher.fetchLastTwoWeeksCarbohydrates() as [[CarbReading]]
+            let insulin = try await healthDataFetcher.fetchLastTwoWeeksInsulin() as [[InsulinReading]]
             
-            // Get dates for the last 14 days
-            for day in 0...13 {
-                guard let date = Calendar.current.date(byAdding: .day, value: -(13 - day), to: Date()) else {
+            // Get dates for the last 7 days
+            for day in 0...6 {
+                guard let date = Calendar.current.date(byAdding: .day, value: -(6 - day), to: Date()) else {
                     continue
                 }
                 let dateFormatter = DateFormatter()

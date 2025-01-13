@@ -9,6 +9,20 @@
 
 import Foundation
 
+struct GlucoseReading: Codable {
+    let value: Int
+    let time: String
+}
+
+struct CarbReading: Codable {
+    let value: Int
+    let time: String
+}
+
+struct InsulinReading: Codable {
+    let value: Double
+    let time: String
+}
 
 struct HealthData: Codable {
     var date: String
@@ -18,9 +32,9 @@ struct HealthData: Codable {
     var bodyWeight: Double?
     var sleepHours: Double?
     var heartRate: Double?
-    var bloodGlucose: Double?    // New property for blood glucose in mg/dL
-    var carbohydrates: Double?   // New property for carbohydrates in grams
-    var insulin: Double?         // New property for insulin in units
+    var bloodGlucose: [GlucoseReading]?    // Changed to use GlucoseReading
+    var carbohydrates: [CarbReading]?   // Changed from Double? to [CarbReading]?
+    var insulin: [InsulinReading]?         // Changed from Double? to [InsulinReading]?
     
     init(
         date: String,
@@ -30,9 +44,9 @@ struct HealthData: Codable {
         exerciseMinutes: Double? = nil,
         bodyWeight: Double? = nil,
         heartRate: Double? = nil,
-        bloodGlucose: Double? = nil,
-        carbohydrates: Double? = nil,
-        insulin: Double? = nil
+        bloodGlucose: [GlucoseReading]? = nil,     // Changed to use GlucoseReading
+        carbohydrates: [CarbReading]? = nil,
+        insulin: [InsulinReading]? = nil
     ) {
         self.date = date
         self.steps = steps
