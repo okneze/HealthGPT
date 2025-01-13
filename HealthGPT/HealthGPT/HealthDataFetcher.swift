@@ -170,6 +170,42 @@ class HealthDataFetcher: DefaultInitializable, Module, EnvironmentAccessible {
         return dailySleepData
     }
 
+    /// Fetches the user's blood glucose data for the last two weeks.
+    ///
+    /// - Returns: An array of `Double` values representing daily average blood glucose in mg/dL.
+    /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
+    func fetchLastTwoWeeksBloodGlucose() async throws -> [Double] {
+        try await fetchLastTwoWeeksQuantityData(
+            for: .bloodGlucose,
+            unit: HKUnit.init(from: "mg/dL"),
+            options: [.discreteAverage]
+        )
+    }
+
+    /// Fetches the user's carbohydrates intake data for the last two weeks.
+    ///
+    /// - Returns: An array of `Double` values representing daily carbohydrates in grams.
+    /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
+    func fetchLastTwoWeeksCarbohydrates() async throws -> [Double] {
+        try await fetchLastTwoWeeksQuantityData(
+            for: .dietaryCarbohydrates,
+            unit: .gram(),
+            options: [.cumulativeSum]
+        )
+    }
+
+    /// Fetches the user's insulin delivery data for the last two weeks.
+    ///
+    /// - Returns: An array of `Double` values representing daily insulin units.
+    /// - Throws: `HealthDataFetcherError` if the data cannot be fetched.
+    func fetchLastTwoWeeksInsulin() async throws -> [Double] {
+        try await fetchLastTwoWeeksQuantityData(
+            for: .insulinDelivery,
+            unit: .internationalUnit(),
+            options: [.cumulativeSum]
+        )
+    }
+
     private func createLastTwoWeeksPredicate() -> NSPredicate {
         let now = Date()
         let startDate = Calendar.current.date(byAdding: DateComponents(day: -14), to: now) ?? Date()

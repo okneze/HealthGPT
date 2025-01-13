@@ -51,6 +51,15 @@ class PromptGenerator {
         if let bodyWeight = dayData.bodyWeight {
             dayPrompt += " \(bodyWeight) lbs of body weight,"
         }
+        if let bloodGlucose = dayData.bloodGlucose {
+            dayPrompt += " \(bloodGlucose) mg/dL blood glucose,"
+        }
+        if let carbs = dayData.carbohydrates {
+            dayPrompt += " \(Int(carbs))g carbohydrates,"
+        }
+        if let insulin = dayData.insulin {
+            dayPrompt += " \(insulin) units insulin,"
+        }
         return dayPrompt
     }
 }

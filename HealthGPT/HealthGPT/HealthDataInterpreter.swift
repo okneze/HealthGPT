@@ -13,12 +13,14 @@ import SpeziLLM
 import SpeziLLMLocal
 import SpeziLLMOpenAI
 import SpeziSpeechSynthesizer
-
+import OSLog
 
 @Observable
 class HealthDataInterpreter: DefaultInitializable, Module, EnvironmentAccessible {
     @ObservationIgnored @Dependency(LLMRunner.self) private var llmRunner
     @ObservationIgnored @Dependency(HealthDataFetcher.self) private var healthDataFetcher
+    
+    private let logger = Logger(subsystem: "HealthGPT", category: "HealthDataInterpreter")
     
     var llm: (any LLMSession)?
     @ObservationIgnored private var systemPrompt = ""
@@ -68,7 +70,52 @@ class HealthDataInterpreter: DefaultInitializable, Module, EnvironmentAccessible
     /// Fetches updated health data using the `HealthDataFetcher`
     /// and passes it to the `PromptGenerator` to create the system prompt.
     private func generateSystemPrompt() async -> String {
-        let healthData = await healthDataFetcher.fetchAndProcessHealthData()
+        let healthData = await fetchAndProcessHealthData()
         return PromptGenerator(with: healthData).buildMainPrompt()
+    }
+
+    func fetchAndProcessHealthData() async -> [HealthData] {
+        var healthData: [HealthData] = []
+        
+        do {
+            let stepCounts = try await healthDataFetcher.fetchLastTwoWeeksStepCount()
+            let sleepHours = try await healthDataFetcher.fetchLastTwoWeeksSleep()
+            let activeEnergy = try await healthDataFetcher.fetchLastTwoWeeksActiveEnergy()
+            let exerciseMinutes = try await healthDataFetcher.fetchLastTwoWeeksExerciseTime()
+            let bodyWeight = try await healthDataFetcher.fetchLastTwoWeeksBodyWeight()
+            let heartRate = try await healthDataFetcher.fetchLastTwoWeeksHeartRate()
+            let bloodGlucose = try await healthDataFetcher.fetchLastTwoWeeksBloodGlucose()
+            let carbohydrates = try await healthDataFetcher.fetchLastTwoWeeksCarbohydrates()
+            let insulin = try await healthDataFetcher.fetchLastTwoWeeksInsulin()
+            
+            // Get dates for the last 14 days
+            for day in 0...13 {
+                guard let date = Calendar.current.date(byAdding: .day, value: -(13 - day), to: Date()) else {
+                    continue
+                }
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                let dateString = dateFormatter.string(from: date)
+                
+                let healthDataItem = HealthData(
+                    date: dateString,
+                    steps: stepCounts[day],
+                    sleepHours: sleepHours[day],
+                    activeEnergy: activeEnergy[day],
+                    exerciseMinutes: exerciseMinutes[day],
+                    bodyWeight: bodyWeight[day],
+                    heartRate: heartRate[day],
+                    bloodGlucose: bloodGlucose[day],
+                    carbohydrates: carbohydrates[day],
+                    insulin: insulin[day]
+                )
+                
+                healthData.append(healthDataItem)
+            }
+        } catch {
+            logger.error("Error fetching health data: \(error.localizedDescription)")
+        }
+        
+        return healthData
     }
 }
